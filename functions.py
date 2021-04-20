@@ -4,6 +4,8 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.model_selection import GridSearchCV
+from sklearn.utils._testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 
 def create_save_features(dname):
 
@@ -277,6 +279,7 @@ def train_mode(dname, filters, fname):
     
     return 0
 
+@ignore_warnings(category=ConvergenceWarning)
 def predict_mode(dname, filters, fname, fname_out):
     '''
     Make predictions for all time-series in dname using the filters and the
