@@ -279,7 +279,6 @@ def train_mode(dname, filters, fname):
     
     return 0
 
-@ignore_warnings(category=ConvergenceWarning)
 def predict_mode(dname, filters, fname, fname_out):
     '''
     Make predictions for all time-series in dname using the filters and the
@@ -412,6 +411,7 @@ def train_minotaur(dataset_t, dataset_X, dataset_y):
 
     return B_coef, B_bias, res_t, res_y_hat, res_auc, res_fpr, res_tpr
    
+@ignore_warnings(category=ConvergenceWarning)
 def predict_x_event(dataset_t, dataset_X, dataset_y, B_coef, B_bias, fname):
     '''
     Performs prediction for the data inside the dataset structure and
