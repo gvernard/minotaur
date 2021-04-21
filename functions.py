@@ -4,6 +4,8 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.model_selection import GridSearchCV
+from sklearn.utils._testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 
 def create_save_features(dname):
 
@@ -409,6 +411,7 @@ def train_minotaur(dataset_t, dataset_X, dataset_y):
 
     return B_coef, B_bias, res_t, res_y_hat, res_auc, res_fpr, res_tpr
    
+@ignore_warnings(category=ConvergenceWarning)
 def predict_x_event(dataset_t, dataset_X, dataset_y, B_coef, B_bias, fname):
     '''
     Performs prediction for the data inside the dataset structure and
