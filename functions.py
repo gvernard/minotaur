@@ -298,25 +298,28 @@ def train_mode(dname, filters, fname):
     
     return 0
 
-def predict_mode(dname, filters, fname, fname_out):
+def predict_mode(dname, filters, model_fname):
     '''
     Make predictions for all time-series in dname using the filters and the
-    predictive model saved in fname. Save the results in fname_out file
+    predictive model saved in model_fname.
     '''
 
     # get the time-series
     ts = [i+'/' for i in sorted(os.listdir(dname)) if os.path.isdir(os.path.join(dname, i))]
-
-    # create the dataset
-    dataset_t, dataset_X, dataset_y = make_dataset_fast(dname, ts, filters)
-    
+        
     # load model
-    B_coef, B_bias = np.loadtxt(fname, unpack=True) # fixed
+    B_coef, B_bias = np.loadtxt(model_fname, unpack=True) # fixed
     B_coef = B_coef[np.newaxis, :]
     B_bias = B_bias[0, np.newaxis]
 
+    # create the entire dataset
+    #dataset_t, dataset_X, dataset_y = make_dataset_fast(dname, ts, filters)
     # predictions on (new) data
-    res_y_hat, res_auc, res_fpr, res_tpr, res_y_bin, res_y_cat = predict_x_event(dataset_t, dataset_X, dataset_y, B_coef, B_bias, fname_out) # fixed
+    #fname_out = 'predictions.dat'
+    #res_auc, res_fpr, res_tpr, res_y_hat, res_y_bin, res_y_cat = predict_x_event(dataset_t, dataset_X, dataset_y, B_coef, B_bias, fname_out) # fixed
+
+    # Loop over the time series
+    res_auc, res_fpr, res_tpr, res_y_hat, res_y_bin, res_y_cat = predict_x_event_new(dname, ts, filters, B_coef, B_bias)
 
     print('AUC on Testing Set: %.4f\n' % (res_auc,)) # fixed
 
@@ -431,7 +434,7 @@ def train_minotaur(dataset_t, dataset_X, dataset_y):
     return B_coef, B_bias, res_t, res_y_hat, res_auc, res_fpr, res_tpr
    
 @ignore_warnings(category=ConvergenceWarning)
-def predict_x_event(dataset_t, dataset_X, dataset_y, B_coef, B_bias, fname):
+def predict_x_event(dataset_t, dataset_X, dataset_y, B_coef, B_bias, fname_out):
     '''
     Performs prediction for the data inside the dataset structure and
     computes the AUC performance of the predictive model.
@@ -471,9 +474,60 @@ def predict_x_event(dataset_t, dataset_X, dataset_y, B_coef, B_bias, fname):
     res_y_cat = y_cat
 
     # save
-    fid = open(fname, 'w')
+    fid = open(fname_out, 'w')
     for ii in range(len(y)):
         fid.write('%.4f, %.4f, %.4f, %.4f, %.4f\n' % (t[ii], y[ii], y_hat[ii], res_y_bin[ii], y_cat[ii]))
     fid.close()
 
-    return res_y_hat, res_auc, res_fpr, res_tpr, res_y_bin, res_y_cat 
+    return res_auc, res_fpr, res_tpr, res_y_hat, res_y_bin, res_y_cat 
+
+@ignore_warnings(category=ConvergenceWarning)
+def predict_x_event_new(dname, ts, filters, B_coef, B_bias):
+    thres = 0.99 # might change
+    lvls = [0.2, 0.8, 0.95]
+
+    res_y_hat = []
+    res_y_bin = []
+    res_y_cat = []
+    all_y = []
+    for i in range(0,len(ts)):
+        t, X, y = make_dataset_fast(dname, [ts[i]], filters)
+        
+        dum = np.array(y)
+        if len(np.unique(dum)) == 1:
+            print("Time series ",ts[i]," has no events")
+            continue
+
+        
+        # load model (new)
+        model = LogisticRegression(max_iter=1).fit(X, y)
+        model.coef_ = B_coef
+        model.intercept_ = B_bias
+
+        y_hat = model.predict_proba(X)
+        y_hat = y_hat[:,1]
+
+        y_bin = y_hat < thres
+        y_cat = np.zeros(len(y_hat))
+        y_cat[ (y_hat > lvls[0]) & (y_hat < lvls[1]) ] = 1
+        y_cat[ (y_hat > lvls[1]) & (y_hat < lvls[2]) ] = 2
+        y_cat[ y_hat > lvls[2] ] = 3
+
+        res_y_hat.extend(y_hat)
+        res_y_bin.extend(y_bin)
+        res_y_cat.extend(y_cat)
+        all_y.extend(y)
+
+        fid = open(dname+ts[i]+'minotaur_prediction.dat', 'w')
+        for ii in range(len(y)):
+            fid.write('%.4f, %.4f, %.4f, %.4f, %.4f\n' % (t[ii], y[ii], y_hat[ii], y_bin[ii], y_cat[ii]))
+        fid.close()
+
+    z1, z2, _ = roc_curve(all_y, res_y_hat, pos_label=1)
+    auc = roc_auc_score(all_y, res_y_hat)
+
+    res_auc = auc
+    res_fpr = z1 # false positive rate (false alarm)
+    res_tpr = z2 # true positive rate (hit)
+
+    return res_auc, res_fpr, res_tpr, res_y_hat, res_y_bin, res_y_cat 

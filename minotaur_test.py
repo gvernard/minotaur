@@ -10,5 +10,4 @@ model_fname = sys.argv[3]
 #create_save_features(dname_train)
 
 print("predict on test data...")
-output_fname = 'predictions.dat'
-res_test = predict_mode(test_dir, filters, model_fname, output_fname)
+res_test = predict_mode(test_dir, filters, model_fname)
