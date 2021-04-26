@@ -7,6 +7,25 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.utils._testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
+def parseFilters(filter_choice):
+    all_filters = ['f_1.dat','f_2.dat','f_3.dat','f_4.dat','f_5.dat','f_6.dat'] # all six filters
+    
+    if filter_choice == 'all':
+        filters = all_filters
+    else:
+        filters = []
+        filter_indices = list(map(int,filter_choice.split(',')))
+        for i in filter_indices:
+            if i >= len(all_filters):
+                print("Filters must be between 0 and 5!")
+                sys.exit()
+            else:
+                filters.append( all_filters[i] )
+
+    return filters
+
+
+
 def create_save_features(dname):
 
     '''
@@ -282,7 +301,7 @@ def train_mode(dname, filters, fname):
 def predict_mode(dname, filters, fname, fname_out):
     '''
     Make predictions for all time-series in dname using the filters and the
-    predictive model savedn in fname. Save the results in fname_out file
+    predictive model saved in fname. Save the results in fname_out file
     '''
 
     # get the time-series
@@ -299,7 +318,7 @@ def predict_mode(dname, filters, fname, fname_out):
     # predictions on (new) data
     res_y_hat, res_auc, res_fpr, res_tpr, res_y_bin, res_y_cat = predict_x_event(dataset_t, dataset_X, dataset_y, B_coef, B_bias, fname_out) # fixed
 
-    print('AUC on Testing SetL %.4f\n' % (res_auc,)) # fixed
+    print('AUC on Testing Set: %.4f\n' % (res_auc,)) # fixed
 
     return 0
 
